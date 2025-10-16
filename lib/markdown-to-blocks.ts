@@ -34,6 +34,16 @@ export function markdownToBlocks(markdown: string): NotionBlock[] {
     else if (line.match(/^\d+\.\s/)) {
       blocks.push(createNumberedListItem(line.replace(/^\d+\.\s/, "")))
     }
+    // Equation block
+    else if (line.startsWith("$$")) {
+      const equationLines: string[] = []
+      i++
+      while (i < lines.length && !lines[i].startsWith("$$")) {
+        equationLines.push(lines[i])
+        i++
+      }
+      blocks.push(createEquationBlock(equationLines.join("\n")))
+    }
     // Code block
     else if (line.startsWith("```")) {
       const language = line.slice(3).trim()
@@ -206,5 +216,15 @@ function createDivider(): NotionBlock {
     object: "block",
     type: "divider",
     divider: {},
+  }
+}
+
+function createEquationBlock(expression: string): NotionBlock {
+  return {
+    object: "block",
+    type: "equation",
+    equation: {
+      expression: expression.trim(),
+    },
   }
 }
