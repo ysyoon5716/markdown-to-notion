@@ -12,6 +12,7 @@ import { PageSelector } from "@/components/page-selector"
 export function MarkdownConverter() {
   const [markdown, setMarkdown] = useState("")
   const [apiKey, setApiKey] = useState("")
+  const [pageTitle, setPageTitle] = useState("New page")
   const [selectedPage, setSelectedPage] = useState<{ id: string; title: string } | null>(null)
   const [isLoading, setIsLoading] = useState(false)
   const [status, setStatus] = useState<{ type: "success" | "error"; message: string } | null>(null)
@@ -41,6 +42,7 @@ export function MarkdownConverter() {
           markdown,
           apiKey,
           pageId: selectedPage.id,
+          title: pageTitle,
         }),
       })
 
@@ -52,9 +54,10 @@ export function MarkdownConverter() {
 
       setStatus({
         type: "success",
-        message: `Successfully created page in "${selectedPage.title}"!`,
+        message: `Successfully created "${pageTitle}" in "${selectedPage.title}"!`,
       })
       setMarkdown("")
+      setPageTitle("New page")
     } catch (error) {
       setStatus({
         type: "error",
@@ -109,28 +112,46 @@ export function MarkdownConverter() {
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <Search className="h-5 w-5" />
-              Select Page
+              Select Parent Page
             </CardTitle>
-            <CardDescription>Choose where to create the content</CardDescription>
+            <CardDescription>Choose where to create the new page</CardDescription>
           </CardHeader>
           <CardContent>
             <PageSelector apiKey={apiKey} selectedPage={selectedPage} onSelectPage={setSelectedPage} />
           </CardContent>
         </Card>
 
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <FileText className="h-5 w-5" />
+              New Page Title
+            </CardTitle>
+            <CardDescription>Enter a title for the new page</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <Input
+              type="text"
+              placeholder="New page"
+              value={pageTitle}
+              onChange={(e) => setPageTitle(e.target.value)}
+            />
+          </CardContent>
+        </Card>
+
         <Button
           onClick={handleConvert}
-          disabled={isLoading || !markdown || !apiKey || !selectedPage}
+          disabled={isLoading || !markdown || !apiKey || !selectedPage || !pageTitle.trim()}
           className="w-full"
           size="lg"
         >
           {isLoading ? (
             <>
               <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-              Converting...
+              Creating Page...
             </>
           ) : (
-            "Convert to Notion"
+            "Create New Page in Notion"
           )}
         </Button>
 

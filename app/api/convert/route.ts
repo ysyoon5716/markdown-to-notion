@@ -3,24 +3,40 @@ import { markdownToBlocks } from "@/lib/markdown-to-blocks"
 
 export async function POST(request: NextRequest) {
   try {
-    const { markdown, apiKey, pageId } = await request.json()
+    const { markdown, apiKey, pageId, title } = await request.json()
 
-    if (!markdown || !apiKey || !pageId) {
+    if (!markdown || !apiKey || !pageId || !title) {
       return NextResponse.json({ error: "Missing required fields" }, { status: 400 })
     }
 
     // Convert markdown to Notion blocks
     const blocks = markdownToBlocks(markdown)
 
-    // Append blocks to the selected page
-    const response = await fetch(`https://api.notion.com/v1/blocks/${pageId}/children`, {
-      method: "PATCH",
+    // Create a new page as a child of the selected page
+    const response = await fetch(`https://api.notion.com/v1/pages`, {
+      method: "POST",
       headers: {
         Authorization: `Bearer ${apiKey}`,
         "Notion-Version": "2022-06-28",
         "Content-Type": "application/json",
       },
-      body: JSON.stringify({ children: blocks }),
+      body: JSON.stringify({
+        parent: {
+          page_id: pageId,
+        },
+        properties: {
+          title: {
+            title: [
+              {
+                text: {
+                  content: title,
+                },
+              },
+            ],
+          },
+        },
+        children: blocks,
+      }),
     })
 
     if (!response.ok) {
