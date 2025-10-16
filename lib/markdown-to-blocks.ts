@@ -36,13 +36,22 @@ export function markdownToBlocks(markdown: string): NotionBlock[] {
     }
     // Equation block
     else if (line.startsWith("$$")) {
-      const equationLines: string[] = []
-      i++
-      while (i < lines.length && !lines[i].startsWith("$$")) {
-        equationLines.push(lines[i])
+      // Check if it's a single-line equation like $$x=y$$ or $$x=y$$\
+      const closingIndex = line.lastIndexOf("$$")
+      if (closingIndex > 0 && closingIndex !== 0) {
+        // Single-line equation: extract content between first $$ and last $$
+        const equation = line.slice(2, closingIndex)
+        blocks.push(createEquationBlock(equation))
+      } else {
+        // Multi-line equation block
+        const equationLines: string[] = []
         i++
+        while (i < lines.length && !lines[i].startsWith("$$")) {
+          equationLines.push(lines[i])
+          i++
+        }
+        blocks.push(createEquationBlock(equationLines.join("\n")))
       }
-      blocks.push(createEquationBlock(equationLines.join("\n")))
     }
     // Code block
     else if (line.startsWith("```")) {
@@ -74,6 +83,76 @@ export function markdownToBlocks(markdown: string): NotionBlock[] {
   return blocks
 }
 
+// Helper function to parse inline elements (equations and code) within a text segment
+// with optional annotations (bold, italic)
+function parseInlineElements(text: string, annotations: any = {}): any[] {
+  const richText: any[] = []
+  let currentText = ""
+  let i = 0
+
+  while (i < text.length) {
+    // Inline equation $text$ (but not $$)
+    if (text[i] === "$" && text[i + 1] !== "$") {
+      if (currentText) {
+        richText.push({
+          type: "text",
+          text: { content: currentText },
+          ...(Object.keys(annotations).length > 0 && { annotations }),
+        })
+        currentText = ""
+      }
+      i++
+      let equationText = ""
+      while (i < text.length && text[i] !== "$") {
+        equationText += text[i]
+        i++
+      }
+      richText.push({
+        type: "equation",
+        equation: { expression: equationText },
+        ...(Object.keys(annotations).length > 0 && { annotations }),
+      })
+      i++ // Skip closing $
+    }
+    // Code `text`
+    else if (text[i] === "`") {
+      if (currentText) {
+        richText.push({
+          type: "text",
+          text: { content: currentText },
+          ...(Object.keys(annotations).length > 0 && { annotations }),
+        })
+        currentText = ""
+      }
+      i++
+      let codeText = ""
+      while (i < text.length && text[i] !== "`") {
+        codeText += text[i]
+        i++
+      }
+      richText.push({
+        type: "text",
+        text: { content: codeText },
+        annotations: { ...annotations, code: true },
+      })
+      i++
+    } else {
+      currentText += text[i]
+      i++
+    }
+  }
+
+  if (currentText) {
+    richText.push({
+      type: "text",
+      text: { content: currentText },
+      ...(Object.keys(annotations).length > 0 && { annotations }),
+    })
+  }
+
+  return richText
+}
+
 function parseRichText(text: string) {
   const richText: any[] = []
   let currentText = ""
@@ -92,11 +171,9 @@ function parseRichText(text: string) {
         boldText += text[i]
         i++
       }
-      richText.push({
-        type: "text",
-        text: { content: boldText },
-        annotations: { bold: true },
-      })
+      // Parse inline elements (equations, code) within bold text
+      const boldElements = parseInlineElements(boldText, { bold: true })
+      richText.push(...boldElements)
       i += 2
     }
     // Italic *text*
@@ -111,11 +188,9 @@ function parseRichText(text: string) {
         italicText += text[i]
         i++
       }
-      richText.push({
-        type: "text",
-        text: { content: italicText },
-        annotations: { italic: true },
-      })
+      // Parse inline elements (equations, code) within italic text
+      const italicElements = parseInlineElements(italicText, { italic: true })
+      richText.push(...italicElements)
       i++
     }
     // Inline equation $text$ (but not $$)
