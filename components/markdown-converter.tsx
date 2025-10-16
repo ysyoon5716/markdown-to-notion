@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
@@ -9,6 +9,7 @@ import { Alert, AlertDescription } from "@/components/ui/alert"
 import { Loader2, FileText, Key, Search, CheckCircle2, AlertCircle } from "lucide-react"
 import { PageSelector } from "@/components/page-selector"
 import { cleanGeminiCitations } from "@/lib/clean-gemini-citations"
+import { getNotionApiKey, setNotionApiKey } from "@/lib/storage"
 
 export function MarkdownConverter() {
   const [markdown, setMarkdown] = useState("")
@@ -17,6 +18,21 @@ export function MarkdownConverter() {
   const [selectedPage, setSelectedPage] = useState<{ id: string; title: string } | null>(null)
   const [isLoading, setIsLoading] = useState(false)
   const [status, setStatus] = useState<{ type: "success" | "error"; message: string } | null>(null)
+
+  // Load API key from localStorage on mount
+  useEffect(() => {
+    const cachedApiKey = getNotionApiKey()
+    if (cachedApiKey) {
+      setApiKey(cachedApiKey)
+    }
+  }, [])
+
+  // Save API key to localStorage whenever it changes
+  useEffect(() => {
+    if (apiKey) {
+      setNotionApiKey(apiKey)
+    }
+  }, [apiKey])
 
   const handleConvert = async () => {
     if (!markdown.trim()) {
@@ -101,7 +117,7 @@ export function MarkdownConverter() {
               <Key className="h-5 w-5" />
               Notion API Key
             </CardTitle>
-            <CardDescription>Your API key is stored locally and never saved</CardDescription>
+            <CardDescription>Your API key is cached locally in your browser</CardDescription>
           </CardHeader>
           <CardContent>
             <Input
