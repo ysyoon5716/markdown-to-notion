@@ -1,0 +1,146 @@
+"use client"
+
+import { useState } from "react"
+import { Button } from "@/components/ui/button"
+import { Input } from "@/components/ui/input"
+import { Textarea } from "@/components/ui/textarea"
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import { Alert, AlertDescription } from "@/components/ui/alert"
+import { Loader2, FileText, Key, Search, CheckCircle2, AlertCircle } from "lucide-react"
+import { PageSelector } from "@/components/page-selector"
+
+export function MarkdownConverter() {
+  const [markdown, setMarkdown] = useState("")
+  const [apiKey, setApiKey] = useState("")
+  const [selectedPage, setSelectedPage] = useState<{ id: string; title: string } | null>(null)
+  const [isLoading, setIsLoading] = useState(false)
+  const [status, setStatus] = useState<{ type: "success" | "error"; message: string } | null>(null)
+
+  const handleConvert = async () => {
+    if (!markdown.trim()) {
+      setStatus({ type: "error", message: "Please enter some markdown text" })
+      return
+    }
+    if (!apiKey.trim()) {
+      setStatus({ type: "error", message: "Please enter your Notion API key" })
+      return
+    }
+    if (!selectedPage) {
+      setStatus({ type: "error", message: "Please select a Notion page" })
+      return
+    }
+
+    setIsLoading(true)
+    setStatus(null)
+
+    try {
+      const response = await fetch("/api/convert", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          markdown,
+          apiKey,
+          pageId: selectedPage.id,
+        }),
+      })
+
+      const data = await response.json()
+
+      if (!response.ok) {
+        throw new Error(data.error || "Failed to convert markdown")
+      }
+
+      setStatus({
+        type: "success",
+        message: `Successfully created page in "${selectedPage.title}"!`,
+      })
+      setMarkdown("")
+    } catch (error) {
+      setStatus({
+        type: "error",
+        message: error instanceof Error ? error.message : "An error occurred",
+      })
+    } finally {
+      setIsLoading(false)
+    }
+  }
+
+  return (
+    <div className="grid gap-6 lg:grid-cols-2">
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <FileText className="h-5 w-5" />
+            Markdown Input
+          </CardTitle>
+          <CardDescription>Enter your markdown text below</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <Textarea
+            placeholder="# Hello World&#10;&#10;This is **bold** and this is *italic*.&#10;&#10;- List item 1&#10;- List item 2"
+            value={markdown}
+            onChange={(e) => setMarkdown(e.target.value)}
+            className="min-h-[400px] font-mono text-sm"
+          />
+        </CardContent>
+      </Card>
+
+      <div className="space-y-6">
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Key className="h-5 w-5" />
+              Notion API Key
+            </CardTitle>
+            <CardDescription>Your API key is stored locally and never saved</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <Input
+              type="password"
+              placeholder="secret_xxxxxxxxxxxxx"
+              value={apiKey}
+              onChange={(e) => setApiKey(e.target.value)}
+              className="font-mono"
+            />
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Search className="h-5 w-5" />
+              Select Page
+            </CardTitle>
+            <CardDescription>Choose where to create the content</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <PageSelector apiKey={apiKey} selectedPage={selectedPage} onSelectPage={setSelectedPage} />
+          </CardContent>
+        </Card>
+
+        <Button
+          onClick={handleConvert}
+          disabled={isLoading || !markdown || !apiKey || !selectedPage}
+          className="w-full"
+          size="lg"
+        >
+          {isLoading ? (
+            <>
+              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+              Converting...
+            </>
+          ) : (
+            "Convert to Notion"
+          )}
+        </Button>
+
+        {status && (
+          <Alert variant={status.type === "error" ? "destructive" : "default"}>
+            {status.type === "success" ? <CheckCircle2 className="h-4 w-4" /> : <AlertCircle className="h-4 w-4" />}
+            <AlertDescription>{status.message}</AlertDescription>
+          </Alert>
+        )}
+      </div>
+    </div>
+  )
+}
