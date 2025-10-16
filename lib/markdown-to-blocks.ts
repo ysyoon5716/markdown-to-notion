@@ -118,6 +118,24 @@ function parseRichText(text: string) {
       })
       i++
     }
+    // Inline equation $text$ (but not $$)
+    else if (text[i] === "$" && text[i + 1] !== "$") {
+      if (currentText) {
+        richText.push({ type: "text", text: { content: currentText } })
+        currentText = ""
+      }
+      i++
+      let equationText = ""
+      while (i < text.length && text[i] !== "$") {
+        equationText += text[i]
+        i++
+      }
+      richText.push({
+        type: "equation",
+        equation: { expression: equationText },
+      })
+      i++ // Skip closing $
+    }
     // Code `text`
     else if (text[i] === "`") {
       if (currentText) {
