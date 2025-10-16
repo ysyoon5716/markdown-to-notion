@@ -16,10 +16,10 @@ export async function POST(request: NextRequest) {
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        filter: {
-          property: "object",
-          value: "page",
-        },
+        // filter: {
+        //   property: "object",
+        //   value: "page",
+        // },
         sort: {
           direction: "descending",
           timestamp: "last_edited_time",

@@ -6,7 +6,8 @@ import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Alert, AlertDescription } from "@/components/ui/alert"
-import { Loader2, FileText, Key, Search, CheckCircle2, AlertCircle } from "lucide-react"
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import { Loader2, FileText, Key, Search, CheckCircle2, AlertCircle, FilePlus } from "lucide-react"
 import { PageSelector } from "@/components/page-selector"
 import { cleanGeminiCitations } from "@/lib/clean-gemini-citations"
 import { getNotionApiKey, setNotionApiKey } from "@/lib/storage"
@@ -14,8 +15,10 @@ import { getNotionApiKey, setNotionApiKey } from "@/lib/storage"
 export function MarkdownConverter() {
   const [markdown, setMarkdown] = useState("")
   const [apiKey, setApiKey] = useState("")
+  const [mode, setMode] = useState<"append" | "create">("create")
   const [pageTitle, setPageTitle] = useState("New page")
   const [selectedPage, setSelectedPage] = useState<{ id: string; title: string } | null>(null)
+  const [targetPage, setTargetPage] = useState<{ id: string; title: string } | null>(null)
   const [isLoading, setIsLoading] = useState(false)
   const [status, setStatus] = useState<{ type: "success" | "error"; message: string } | null>(null)
 
@@ -43,9 +46,21 @@ export function MarkdownConverter() {
       setStatus({ type: "error", message: "Please enter your Notion API key" })
       return
     }
-    if (!selectedPage) {
-      setStatus({ type: "error", message: "Please select a Notion page" })
-      return
+
+    if (mode === "create") {
+      if (!selectedPage) {
+        setStatus({ type: "error", message: "Please select a parent page" })
+        return
+      }
+      if (!pageTitle.trim()) {
+        setStatus({ type: "error", message: "Please enter a page title" })
+        return
+      }
+    } else {
+      if (!targetPage) {
+        setStatus({ type: "error", message: "Please select a target page to append to" })
+        return
+      }
     }
 
     setIsLoading(true)
@@ -57,29 +72,53 @@ export function MarkdownConverter() {
         ? cleanGeminiCitations(markdown)
         : markdown
 
-      const response = await fetch("/api/convert", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          markdown: processedMarkdown,
-          apiKey,
-          pageId: selectedPage.id,
-          title: pageTitle,
-        }),
-      })
+      if (mode === "create") {
+        const response = await fetch("/api/convert", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            markdown: processedMarkdown,
+            apiKey,
+            pageId: selectedPage!.id,
+            title: pageTitle,
+          }),
+        })
 
-      const data = await response.json()
+        const data = await response.json()
 
-      if (!response.ok) {
-        throw new Error(data.error || "Failed to convert markdown")
+        if (!response.ok) {
+          throw new Error(data.error || "Failed to create page")
+        }
+
+        setStatus({
+          type: "success",
+          message: `Successfully created "${pageTitle}" in "${selectedPage!.title}"!`,
+        })
+        setMarkdown("")
+        setPageTitle("New page")
+      } else {
+        const response = await fetch("/api/append", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            markdown: processedMarkdown,
+            apiKey,
+            pageId: targetPage!.id,
+          }),
+        })
+
+        const data = await response.json()
+
+        if (!response.ok) {
+          throw new Error(data.error || "Failed to append to page")
+        }
+
+        setStatus({
+          type: "success",
+          message: `Successfully appended markdown to "${targetPage!.title}"!`,
+        })
+        setMarkdown("")
       }
-
-      setStatus({
-        type: "success",
-        message: `Successfully created "${pageTitle}" in "${selectedPage.title}"!`,
-      })
-      setMarkdown("")
-      setPageTitle("New page")
     } catch (error) {
       setStatus({
         type: "error",
@@ -134,46 +173,74 @@ export function MarkdownConverter() {
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <Search className="h-5 w-5" />
-              Select Parent Page
+              Action Mode
             </CardTitle>
-            <CardDescription>Choose where to create the new page</CardDescription>
+            <CardDescription>Choose how to add your markdown to Notion</CardDescription>
           </CardHeader>
           <CardContent>
-            <PageSelector apiKey={apiKey} selectedPage={selectedPage} onSelectPage={setSelectedPage} />
-          </CardContent>
-        </Card>
+            <Tabs value={mode} onValueChange={(value) => setMode(value as "append" | "create")} className="w-full">
+              <TabsList className="grid w-full grid-cols-2">
+                <TabsTrigger value="create" className="flex items-center gap-2">
+                  <FilePlus className="h-4 w-4" />
+                  Create New
+                </TabsTrigger>
+                <TabsTrigger value="append" className="flex items-center gap-2">
+                  <FileText className="h-4 w-4" />
+                  Append to Existing
+                </TabsTrigger>
+              </TabsList>
 
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <FileText className="h-5 w-5" />
-              New Page Title
-            </CardTitle>
-            <CardDescription>Enter a title for the new page</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <Input
-              type="text"
-              placeholder="New page"
-              value={pageTitle}
-              onChange={(e) => setPageTitle(e.target.value)}
-            />
+              <TabsContent value="create" className="space-y-4 mt-4">
+                <div className="space-y-2">
+                  <label className="text-sm font-medium">Parent Page</label>
+                  <PageSelector apiKey={apiKey} selectedPage={selectedPage} onSelectPage={setSelectedPage} />
+                  <p className="text-xs text-muted-foreground">Select where to create the new page</p>
+                </div>
+
+                <div className="space-y-2">
+                  <label className="text-sm font-medium">New Page Title</label>
+                  <Input
+                    type="text"
+                    placeholder="New page"
+                    value={pageTitle}
+                    onChange={(e) => setPageTitle(e.target.value)}
+                  />
+                  <p className="text-xs text-muted-foreground">Enter a title for the new page</p>
+                </div>
+              </TabsContent>
+
+              <TabsContent value="append" className="space-y-4 mt-4">
+                <div className="space-y-2">
+                  <label className="text-sm font-medium">Target Page</label>
+                  <PageSelector apiKey={apiKey} selectedPage={targetPage} onSelectPage={setTargetPage} />
+                  <p className="text-xs text-muted-foreground">Select which page to append the markdown to</p>
+                </div>
+              </TabsContent>
+            </Tabs>
           </CardContent>
         </Card>
 
         <Button
           onClick={handleConvert}
-          disabled={isLoading || !markdown || !apiKey || !selectedPage || !pageTitle.trim()}
+          disabled={
+            isLoading ||
+            !markdown ||
+            !apiKey ||
+            (mode === "create" && (!selectedPage || !pageTitle.trim())) ||
+            (mode === "append" && !targetPage)
+          }
           className="w-full"
           size="lg"
         >
           {isLoading ? (
             <>
               <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-              Creating Page...
+              {mode === "create" ? "Creating Page..." : "Appending..."}
             </>
-          ) : (
+          ) : mode === "create" ? (
             "Create New Page in Notion"
+          ) : (
+            "Append to Notion Page"
           )}
         </Button>
 
