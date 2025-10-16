@@ -89,7 +89,7 @@ export function MarkdownConverter() {
             placeholder="# Hello World&#10;&#10;This is **bold** and this is *italic*.&#10;&#10;- List item 1&#10;- List item 2"
             value={markdown}
             onChange={(e) => setMarkdown(e.target.value)}
-            className="min-h-[400px] font-mono text-sm"
+            className="h-[400px] resize-none font-mono text-sm"
           />
         </CardContent>
       </Card>

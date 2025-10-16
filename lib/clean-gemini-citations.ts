@@ -21,7 +21,7 @@ export function cleanGeminiCitations(markdown: string): string {
 
   // // Ensure block equations ($$...$$) have newlines after opening and before closing $$
   // // This handles cases like: $$equation$$ -> $$\nequation\n$$
-  cleaned = cleaned.replace(/\$\$/g, '\n$$$$\n');
+  // cleaned = cleaned.replace(/\$\$/g, '\n$$$$\n');
   // cleaned = cleaned.replace(/\$\$(?!\n)/g, '$$\n')  // Add newline after opening $$ if not present
   // cleaned = cleaned.replace(/(?<!\n)\$\$/g, '\n$$')  // Add newline before closing $$ if not present
 
