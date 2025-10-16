@@ -6,8 +6,9 @@ import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Alert, AlertDescription } from "@/components/ui/alert"
-import { Loader2, FileText, Key, Search, CheckCircle2, AlertCircle } from "lucide-react"
+import { Loader2, FileText, Key, Search, CheckCircle2, AlertCircle, Sparkles } from "lucide-react"
 import { PageSelector } from "@/components/page-selector"
+import { cleanGeminiCitations } from "@/lib/clean-gemini-citations"
 
 export function MarkdownConverter() {
   const [markdown, setMarkdown] = useState("")
@@ -16,6 +17,12 @@ export function MarkdownConverter() {
   const [selectedPage, setSelectedPage] = useState<{ id: string; title: string } | null>(null)
   const [isLoading, setIsLoading] = useState(false)
   const [status, setStatus] = useState<{ type: "success" | "error"; message: string } | null>(null)
+
+  const handleCleanCitations = () => {
+    if (!markdown.trim()) return
+    const cleaned = cleanGeminiCitations(markdown)
+    setMarkdown(cleaned)
+  }
 
   const handleConvert = async () => {
     if (!markdown.trim()) {
@@ -78,13 +85,23 @@ export function MarkdownConverter() {
           </CardTitle>
           <CardDescription>Enter your markdown text below</CardDescription>
         </CardHeader>
-        <CardContent>
+        <CardContent className="space-y-3">
           <Textarea
             placeholder="# Hello World&#10;&#10;This is **bold** and this is *italic*.&#10;&#10;- List item 1&#10;- List item 2"
             value={markdown}
             onChange={(e) => setMarkdown(e.target.value)}
             className="min-h-[400px] font-mono text-sm"
           />
+          <Button
+            onClick={handleCleanCitations}
+            disabled={!markdown.trim()}
+            variant="outline"
+            size="sm"
+            className="w-full"
+          >
+            <Sparkles className="mr-2 h-4 w-4" />
+            Clean Gemini Citations
+          </Button>
         </CardContent>
       </Card>
 
